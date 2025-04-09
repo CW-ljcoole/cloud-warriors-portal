@@ -3,25 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
-
-// Print current directory
-console.log('Current directory:', __dirname);
-
-// List files in the current directory
-console.log('Files in current directory:', fs.readdirSync(__dirname));
-
-// Try to list files in the models directory
-try {
-  const modelsPath = path.join(__dirname, 'models');
-  console.log('Models directory exists:', fs.existsSync(modelsPath));
-  if (fs.existsSync(modelsPath)) {
-    console.log('Files in models directory:', fs.readdirSync(modelsPath));
-  }
-} catch (err) {
-  console.error('Error checking models directory:', err);
-}
 
 // Load environment variables
 dotenv.config();
@@ -44,7 +25,19 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Connect to MongoDB
-const connectDB = require('./config/db');
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log('MongoDB Connected...');
+  } catch (err) {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
+  }
+};
+
 connectDB();
 
 // Define routes
@@ -56,18 +49,16 @@ app.use('/api/zoom', zoomRoutes);
 app.use('/api/distribution', distributionRoutes);
 app.use('/api/storage', storageRoutes);
 
-// Basic route for testing
+// Root route
 app.get('/', (req, res) => {
   res.send('Cloud Warriors PM Portal API is running');
 });
 
-// Define port
+// Define PORT
 const PORT = process.env.PORT || 5000;
 
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-module.exports = app;
 
