@@ -113,4 +113,16 @@ const Dashboard = () => {
           ) : (
             <div className="no-projects">No projects found. Create your first project!</div>
           )}
+          
+          <div className="new-project-folder" onClick={() => setShowForm(true)}>
+            <div className="folder-icon">+</div>
+            <div className="folder-name">New Project</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
 
