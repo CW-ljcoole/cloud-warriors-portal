@@ -65,24 +65,30 @@ const Dashboard = () => {
 
   const fetchZoomRecordings = async (projectId, meetingIds) => {
     try {
-      // For now, we'll use a mock user ID - in a real app, this would be the logged-in user
-      const userId = "mockUserId";
       const apiUrl = config.apiUrl;
       
-      // This would be replaced with actual API calls to fetch recordings for each meeting ID
-      alert(`Fetching Zoom recordings for project ${projectId} with meeting IDs: ${meetingIds.join(', ')}`);
+      for (const meetingId of meetingIds) {
+        // Fetch recordings for this meeting ID
+        const response = await fetch(`${apiUrl}/api/zoom/recordings/meeting/${meetingId}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const recordingData = await response.json();
+        
+        // Import these recordings to the project
+        await fetch(`${apiUrl}/api/zoom/recordings/import/${projectId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recordings: recordingData.recording_files }),
+        });
+      }
       
-      // In a real implementation, you would call your backend API:
-      // const response = await fetch(`${apiUrl}/api/zoom/recordings/${userId}?meetingIds=${meetingIds.join(',')}`);
-      // const recordings = await response.json();
-      // Then import these recordings to the project:
-      // await fetch(`${apiUrl}/api/zoom/recordings/import/${userId}/${projectId}`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ recordings }),
-      // });
+      alert(`Successfully fetched recordings for project ${projectId}`);
     } catch (error) {
       console.error("Error fetching Zoom recordings:", error);
+      alert("Error fetching Zoom recordings. Please check your Zoom integration settings.");
     }
   };
 
@@ -107,17 +113,4 @@ const Dashboard = () => {
           ) : (
             <div className="no-projects">No projects found. Create your first project!</div>
           )}
-          <div 
-            className="project-folder new-project"
-            onClick={() => setShowForm(true)}
-          >
-            <div className="folder-icon">+</div>
-            <div className="folder-name">New Project</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
-export default Dashboard;
