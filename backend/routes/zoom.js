@@ -15,11 +15,22 @@ router.post('/recordings/import', zoomController.importZoomRecordings);
 // @route   POST api/zoom/connect
 // @desc    Connect Zoom account
 // @access  Public
-router.post('/connect', zoomController.connectZoomAccount);
+router.post('/connect', zoomController.connectZoom);
 
 // @route   DELETE api/zoom/disconnect/:userId
 // @desc    Disconnect Zoom account
 // @access  Public
 router.delete('/disconnect/:userId', zoomController.disconnectZoomAccount);
 
+// @route   GET api/zoom/recordings/meeting/:meetingId
+// @desc    Get recordings for a specific meeting
+// @access  Public
+router.get('/recordings/meeting/:meetingId', zoomController.getZoomRecordingsByMeetingId);
+
+// @route   POST api/zoom/recordings/import/:projectId
+// @desc    Import recordings to a project
+// @access  Public
+router.post('/recordings/import/:projectId', zoomController.importRecordingsToProject);
+
 module.exports = router;
+
