@@ -1,0 +1,41 @@
+.dashboard-container {
+  padding: 20px;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.loading, .error, .no-projects {
+  text-align: center;
+  margin-top: 50px;
+  color: #666;
+}
+
+.error {
+  color: #e74c3c;
+}
+
+.new-project {
+  border: 2px dashed #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.new-project:hover {
+  border-color: #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.new-project .folder-icon {
+  font-size: 30px;
+  margin-bottom: 10px;
+  color: #3498db;
+}
