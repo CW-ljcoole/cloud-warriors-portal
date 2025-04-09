@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/ZoomIntegration.css';
 import config from '../config';
 
@@ -9,6 +9,27 @@ const ZoomIntegration = () => {
     accountId: ''
   });
   const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    // Check if Zoom is already connected
+    const checkZoomConnection = async () => {
+      try {
+        const apiUrl = config.apiUrl;
+        const response = await fetch(`${apiUrl}/api/zoom/status`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.connected) {
+            setConnected(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking Zoom connection:', error);
+      }
+    };
+    
+    checkZoomConnection();
+  }, []);
 
   const handleChange = (e) => {
     setZoomCredentials({
@@ -39,6 +60,23 @@ const ZoomIntegration = () => {
     }
   };
 
+  const handleDisconnect = async () => {
+    try {
+      const apiUrl = config.apiUrl;
+      const response = await fetch(`${apiUrl}/api/zoom/disconnect/1`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Failed to disconnect Zoom');
+      
+      setConnected(false);
+      alert('Successfully disconnected Zoom account.');
+    } catch (error) {
+      console.error('Error disconnecting Zoom:', error);
+      alert('Failed to disconnect Zoom. Please try again.');
+    }
+  };
+
   return (
     <div className="zoom-integration-container">
       <h1>Zoom Integration</h1>
@@ -46,13 +84,10 @@ const ZoomIntegration = () => {
       {connected ? (
         <div className="zoom-connected">
           <div className="success-icon">✓</div>
-          <h2>Connected to Zoom</h2>
-          <p>Your Zoom account is successfully connected. You can now add Zoom Meeting IDs to your projects to automatically fetch recordings.</p>
-          <button 
-            className="disconnect-btn"
-            onClick={() => setConnected(false)}
-          >
-            Disconnect
+          <h2>Your Zoom account is connected!</h2>
+          <p>You can now add Zoom Meeting IDs to your projects to automatically fetch recordings.</p>
+          <button className="disconnect-btn" onClick={handleDisconnect}>
+            Disconnect Zoom
           </button>
         </div>
       ) : (
@@ -75,7 +110,7 @@ const ZoomIntegration = () => {
             <div className="form-group">
               <label htmlFor="apiSecret">Zoom API Secret</label>
               <input
-                type="password"
+                type="text"
                 id="apiSecret"
                 name="apiSecret"
                 value={zoomCredentials.apiSecret}
@@ -120,4 +155,3 @@ const ZoomIntegration = () => {
 };
 
 export default ZoomIntegration;
-
