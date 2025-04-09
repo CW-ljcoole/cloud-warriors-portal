@@ -5,7 +5,8 @@ import config from '../config';
 const ZoomIntegration = () => {
   const [zoomCredentials, setZoomCredentials] = useState({
     apiKey: '',
-    apiSecret: ''
+    apiSecret: '',
+    accountId: ''
   });
   const [connected, setConnected] = useState(false);
 
@@ -19,20 +20,17 @@ const ZoomIntegration = () => {
   const handleConnect = async (e) => {
     e.preventDefault();
     
-    // In a real implementation, this would save the credentials to the user's profile
-    // and verify them with Zoom
     try {
-      // Mock API call - in a real app, this would call your backend
+      // Mock API call
       // const apiUrl = config.apiUrl;
       // const response = await fetch(`${apiUrl}/api/users/zoom-connect`, {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(zoomCredentials),
       // });
-      
+
       // if (!response.ok) throw new Error('Failed to connect to Zoom');
-      
-      // For demo purposes, we'll just simulate a successful connection
+
       setConnected(true);
       alert('Successfully connected to Zoom! You can now add Zoom Meeting IDs to your projects.');
     } catch (error) {
@@ -73,7 +71,7 @@ const ZoomIntegration = () => {
                 required
               />
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="apiSecret">Zoom API Secret</label>
               <input
@@ -81,6 +79,18 @@ const ZoomIntegration = () => {
                 id="apiSecret"
                 name="apiSecret"
                 value={zoomCredentials.apiSecret}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="accountId">Zoom Account ID</label>
+              <input
+                type="text"
+                id="accountId"
+                name="accountId"
+                value={zoomCredentials.accountId}
                 onChange={handleChange}
                 required
               />
@@ -100,11 +110,11 @@ const ZoomIntegration = () => {
               <li>Click on "Develop" in the top-right corner and select "Build App"</li>
               <li>Choose "JWT" as the app type</li>
               <li>Fill in the required information and create your app</li>
-              <li>Copy the API Key and API Secret provided</li>
+              <li>Copy the API Key, API Secret, and Account ID provided</li>
             </ol>
           </div>
         </div>
-      ) }
+      )}
     </div>
   );
 };
