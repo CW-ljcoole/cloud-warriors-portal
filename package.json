@@ -1,0 +1,34 @@
+{
+  "name": "cloud-warriors-portal",
+  "version": "1.0.0",
+  "description": "Cloud Warriors PM Portal Tool",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "server": "nodemon backend/server.js",
+    "client": "cd frontend && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "project management",
+    "zoom",
+    "meeting minutes"
+  ],
+  "author": "Cloud Warriors",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.1",
+    "nodemailer": "^6.9.7"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1"
+  }
+}
