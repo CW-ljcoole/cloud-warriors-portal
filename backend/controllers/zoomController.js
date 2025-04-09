@@ -1,171 +1,82 @@
-const axios = require('axios');
-const User = require('../models/User');
-const Recording = require('../models/Recording');
-
-// Get Zoom recordings
-exports.getZoomRecordings = async (req, res) => {
+// Connect to Zoom API
+exports.connectZoom = async (req, res) => {
   try {
-    const { userId, from, to } = req.query;
+    const { apiKey, apiSecret, accountId } = req.body;
     
-    // Get user with Zoom credentials
-    const user = await User.findById(userId);
-    if (!user || !user.zoomIntegration.connected) {
-      return res.status(400).json({ message: 'User does not have Zoom integration configured' });
-    }
-    
-    // Prepare Zoom API request
-    const zoomApiUrl = `${process.env.ZOOM_API_BASE_URL}/users/me/recordings`;
-    const params = {};
-    if (from) params.from = from;
-    if (to) params.to = to;
-    
-    // Create Zoom JWT token
-    const token = Buffer.from(`${user.zoomIntegration.apiKey}:${user.zoomIntegration.apiSecret}`).toString('base64');
-    
-    // Make request to Zoom API
-    const response = await axios.get(zoomApiUrl, {
-      params,
-      headers: {
-        'Authorization': `Basic ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    res.json(response.data);
-  } catch (err) {
-    console.error('Zoom API Error:', err.response ? err.response.data : err.message);
-    res.status(500).json({ 
-      message: 'Error fetching Zoom recordings',
-      error: err.response ? err.response.data : err.message
-    });
-  }
-};
-
-// Import Zoom recordings to project
-exports.importZoomRecordings = async (req, res) => {
-  try {
-    const { projectId, recordings } = req.body;
-    
-    if (!Array.isArray(recordings) || recordings.length === 0) {
-      return res.status(400).json({ message: 'No recordings provided' });
-    }
-    
-    const importedRecordings = [];
-    
-    // Process each recording
-    for (const recording of recordings) {
-      // Check if recording already exists
-      const existingRecording = await Recording.findOne({ zoomId: recording.id });
-      
-      if (!existingRecording) {
-        // Create new recording
-        const newRecording = new Recording({
-          projectId,
-          name: recording.topic || 'Zoom Meeting',
-          date: new Date(recording.start_time),
-          duration: recording.duration ? `${Math.floor(recording.duration / 60)}:${recording.duration % 60}` : '0:00',
-          zoomId: recording.id,
-          url: recording.share_url || recording.recording_files[0]?.download_url,
-          size: recording.total_size ? `${Math.round(recording.total_size / 1024 / 1024)} MB` : 'Unknown',
-          processed: false,
-          minutesGenerated: false
-        });
-        
-        const savedRecording = await newRecording.save();
-        importedRecordings.push(savedRecording);
-      }
-    }
-    
-    res.json({
-      message: `Imported ${importedRecordings.length} recordings`,
-      recordings: importedRecordings
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Connect Zoom account
-exports.connectZoomAccount = async (req, res) => {
-  try {
-    const { userId, apiKey, apiSecret } = req.body;
-    
-    // Validate input
-    if (!apiKey || !apiSecret) {
-      return res.status(400).json({ message: 'API Key and API Secret are required' });
-    }
-    
-    // Find user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Test Zoom credentials
+    // Test the credentials by trying to get an OAuth token
     try {
-      const zoomApiUrl = `${process.env.ZOOM_API_BASE_URL}/users/me`;
-      const token = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-      
-      await axios.get(zoomApiUrl, {
+      const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
+        params: {
+          grant_type: 'account_credentials',
+          account_id: accountId
+        },
         headers: {
-          'Authorization': `Basic ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`) .toString('base64')}`
         }
       });
       
-      // Update user with Zoom credentials
-      user.zoomIntegration = {
-        apiKey,
-        apiSecret,
-        connected: true
-      };
-      
-      await user.save();
-      
-      res.json({
-        message: 'Zoom account connected successfully',
-        connected: true
-      });
-    } catch (zoomErr) {
-      console.error('Zoom API Error:', zoomErr.response ? zoomErr.response.data : zoomErr.message);
-      return res.status(400).json({ 
-        message: 'Invalid Zoom credentials',
-        error: zoomErr.response ? zoomErr.response.data : zoomErr.message
-      });
+      if (tokenResponse.data && tokenResponse.data.access_token) {
+        // Credentials are valid, save them
+        // For demo purposes, we'll just return success
+        // In a real app, you would save these to a database
+        
+        // Create a global config or environment variables
+        process.env.ZOOM_API_KEY = apiKey;
+        process.env.ZOOM_API_SECRET = apiSecret;
+        process.env.ZOOM_ACCOUNT_ID = accountId;
+        
+        res.json({ success: true, message: 'Zoom credentials saved successfully' });
+      } else {
+        res.status(400).json({ success: false, message: 'Invalid Zoom credentials' });
+      }
+    } catch (error) {
+      console.error('Error testing Zoom credentials:', error);
+      res.status(400).json({ success: false, message: 'Invalid Zoom credentials', error: error.message });
     }
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error connecting to Zoom:', err);
+    res.status(500).json({ success: false, message: 'Error connecting to Zoom', error: err.message });
   }
 };
 
-// Disconnect Zoom account
-exports.disconnectZoomAccount = async (req, res) => {
+// Get recordings for a specific meeting
+exports.getZoomRecordingsByMeetingId = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { meetingId } = req.params;
     
-    // Find user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    // Get credentials from environment variables
+    const apiKey = process.env.ZOOM_API_KEY;
+    const apiSecret = process.env.ZOOM_API_SECRET;
+    const accountId = process.env.ZOOM_ACCOUNT_ID;
+    
+    if (!apiKey || !apiSecret || !accountId) {
+      return res.status(400).json({ message: 'Zoom credentials not configured' });
     }
     
-    // Update user to disconnect Zoom
-    user.zoomIntegration = {
-      apiKey: '',
-      apiSecret: '',
-      connected: false
-    };
-    
-    await user.save();
-    
-    res.json({
-      message: 'Zoom account disconnected successfully',
-      connected: false
+    // Get OAuth token
+    const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
+      params: {
+        grant_type: 'account_credentials',
+        account_id: accountId
+      },
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`) .toString('base64')}`
+      }
     });
+    
+    const token = tokenResponse.data.access_token;
+    
+    // Get recordings
+    const response = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}/recordings`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }) ;
+    
+    res.json(response.data);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching Zoom recordings for meeting:', err);
+    res.status(500).json({ message: 'Error fetching Zoom recordings', error: err.message });
   }
 };
