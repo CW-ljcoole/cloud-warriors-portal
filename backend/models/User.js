@@ -3,46 +3,27 @@ const mongoose = require('mongoose');
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   email: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
+    unique: true
   },
   role: {
     type: String,
-    default: 'User',
-    enum: ['Admin', 'Project Manager', 'User']
+    enum: ['admin', 'project_manager', 'team_member', 'viewer'],
+    default: 'team_member'
   },
   company: {
-    type: String,
-    trim: true
-  },
-  profilePicture: {
     type: String
   },
-  notificationSettings: {
-    emailNotifications: {
-      type: Boolean,
-      default: true
-    },
-    meetingReminders: {
-      type: Boolean,
-      default: true
-    },
-    actionItemReminders: {
-      type: Boolean,
-      default: true
-    },
-    weeklyDigest: {
-      type: Boolean,
-      default: false
+  projects: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Project'
     }
-  },
+  ],
   zoomIntegration: {
     apiKey: {
       type: String
@@ -50,7 +31,7 @@ const UserSchema = new mongoose.Schema({
     apiSecret: {
       type: String
     },
-    connected: {
+    enabled: {
       type: Boolean,
       default: false
     }
@@ -62,3 +43,4 @@ const UserSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('User', UserSchema);
+
