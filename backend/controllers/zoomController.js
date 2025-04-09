@@ -1,6 +1,7 @@
 const axios = require('axios');
-const Project = require('../models/Project'); // Ensure this is defined
-const Recording = require('../models/Recording'); // Ensure this is defined
+const Project = require('../models/Project');
+const Recording = require('../models/Recording');
+const ZoomSettings = require('../models/ZoomSettings');
 
 // Connect to Zoom API
 exports.connectZoom = async (req, res) => {
@@ -8,6 +9,7 @@ exports.connectZoom = async (req, res) => {
     const { apiKey, apiSecret, accountId } = req.body;
 
     try {
+      // Test the credentials
       const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
         params: {
           grant_type: 'account_credentials',
@@ -19,9 +21,25 @@ exports.connectZoom = async (req, res) => {
       });
 
       if (tokenResponse.data && tokenResponse.data.access_token) {
-        process.env.ZOOM_API_KEY = apiKey;
-        process.env.ZOOM_API_SECRET = apiSecret;
-        process.env.ZOOM_ACCOUNT_ID = accountId;
+        // Credentials are valid, save them to database
+        // First, check if settings already exist
+        let settings = await ZoomSettings.findOne();
+        
+        if (settings) {
+          // Update existing settings
+          settings.apiKey = apiKey;
+          settings.apiSecret = apiSecret;
+          settings.accountId = accountId;
+          await settings.save();
+        } else {
+          // Create new settings
+          settings = new ZoomSettings({
+            apiKey,
+            apiSecret,
+            accountId
+          });
+          await settings.save();
+        }
 
         res.json({ success: true, message: 'Zoom credentials saved successfully' });
       } else {
@@ -37,19 +55,19 @@ exports.connectZoom = async (req, res) => {
   }
 };
 
-// Get recordings for a specific meeting
-exports.getZoomRecordingsByMeetingId = async (req, res) => {
+// Get Zoom OAuth token
+const getZoomToken = async () => {
   try {
-    const { meetingId } = req.params;
-
-    const apiKey = process.env.ZOOM_API_KEY;
-    const apiSecret = process.env.ZOOM_API_SECRET;
-    const accountId = process.env.ZOOM_ACCOUNT_ID;
-
-    if (!apiKey || !apiSecret || !accountId) {
-      return res.status(400).json({ message: 'Zoom credentials not configured' });
+    // Get credentials from database
+    const settings = await ZoomSettings.findOne();
+    
+    if (!settings) {
+      throw new Error('Zoom credentials not configured');
     }
-
+    
+    const { apiKey, apiSecret, accountId } = settings;
+    
+    // Get OAuth token
     const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
       params: {
         grant_type: 'account_credentials',
@@ -59,20 +77,89 @@ exports.getZoomRecordingsByMeetingId = async (req, res) => {
         'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`) .toString('base64')}`
       }
     });
+    
+    return tokenResponse.data.access_token;
+  } catch (error) {
+    console.error('Error getting Zoom token:', error);
+    throw error;
+  }
+};
 
-    const token = tokenResponse.data.access_token;
+// Get Zoom recordings
+exports.getZoomRecordings = async (req, res) => {
+  try {
+    // Get OAuth token
+    const token = await getZoomToken();
+    
+    // Get recordings
+    const response = await axios.get('https://api.zoom.us/v2/users/me/recordings', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }) ;
+    
+    res.json(response.data);
+  } catch (err) {
+    console.error('Error fetching Zoom recordings:', err);
+    res.status(500).json({ message: 'Error fetching Zoom recordings', error: err.message });
+  }
+};
 
+// Get recordings for a specific meeting
+exports.getZoomRecordingsByMeetingId = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    
+    // Get OAuth token
+    const token = await getZoomToken();
+    
+    // Get recordings
     const response = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}/recordings`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     }) ;
-
+    
     res.json(response.data);
   } catch (err) {
     console.error('Error fetching Zoom recordings for meeting:', err);
     res.status(500).json({ message: 'Error fetching Zoom recordings', error: err.message });
+  }
+};
+
+// Import Zoom recordings to project
+exports.importZoomRecordings = async (req, res) => {
+  try {
+    const { projectId, recordings } = req.body;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const importedRecordings = [];
+    
+    for (const recording of recordings) {
+      const newRecording = new Recording({
+        projectId,
+        name: recording.topic || 'Zoom Recording',
+        date: new Date(recording.start_time),
+        duration: `${Math.floor(recording.duration / 60)}:${String(recording.duration % 60).padStart(2, '0')}`,
+        zoomId: recording.id,
+        url: recording.share_url || recording.download_url,
+        size: recording.total_size ? `${Math.round(recording.total_size / (1024 * 1024))} MB` : 'Unknown'
+      });
+      
+      await newRecording.save();
+      importedRecordings.push(newRecording);
+    }
+    
+    res.json(importedRecordings);
+  } catch (err) {
+    console.error('Error importing Zoom recordings:', err);
+    res.status(500).json({ message: 'Error importing Zoom recordings', error: err.message });
   }
 };
 
@@ -81,35 +168,29 @@ exports.importRecordingsToProject = async (req, res) => {
   try {
     const { projectId } = req.params;
     const { recordings } = req.body;
-
+    
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
-
+    
     const importedRecordings = [];
-
-    for (const rec of recordings) {
-      const existingRecording = await Recording.findOne({ zoomId: rec.id });
-      if (existingRecording) {
-        importedRecordings.push(existingRecording);
-        continue;
-      }
-
+    
+    for (const recording of recordings) {
       const newRecording = new Recording({
         projectId,
-        name: rec.topic || 'Untitled Recording',
-        date: new Date(),
-        duration: rec.duration ? `${Math.floor(rec.duration / 60)}:${String(rec.duration % 60).padStart(2, '0')}` : 'Unknown',
-        zoomId: rec.id,
-        url: rec.play_url || rec.download_url,
-        size: rec.file_size ? `${Math.round(rec.file_size / (1024 * 1024))} MB` : 'Unknown'
+        name: recording.recording_type || 'Zoom Recording',
+        date: new Date(recording.recording_start),
+        duration: recording.duration || '0:00',
+        zoomId: recording.id,
+        url: recording.play_url || recording.download_url,
+        size: recording.file_size ? `${Math.round(recording.file_size / (1024 * 1024))} MB` : 'Unknown'
       });
-
-      const savedRecording = await newRecording.save();
-      importedRecordings.push(savedRecording);
+      
+      await newRecording.save();
+      importedRecordings.push(newRecording);
     }
-
+    
     res.json(importedRecordings);
   } catch (err) {
     console.error('Error importing recordings to project:', err);
@@ -117,101 +198,12 @@ exports.importRecordingsToProject = async (req, res) => {
   }
 };
 
-// Get all Zoom recordings
-exports.getZoomRecordings = async (req, res) => {
-  try {
-    const apiKey = process.env.ZOOM_API_KEY;
-    const apiSecret = process.env.ZOOM_API_SECRET;
-    const accountId = process.env.ZOOM_ACCOUNT_ID;
-
-    if (!apiKey || !apiSecret || !accountId) {
-      return res.status(400).json({ message: 'Zoom credentials not configured' });
-    }
-
-    const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
-      params: {
-        grant_type: 'account_credentials',
-        account_id: accountId
-      },
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`) .toString('base64')}`
-      }
-    });
-
-    const token = tokenResponse.data.access_token;
-
-    // Get user's recordings (adjust this endpoint as needed)
-    const response = await axios.get('https://api.zoom.us/v2/users/me/recordings', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      params: {
-        from: new Date(Date.now()  - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
-        to: new Date().toISOString().split('T')[0]
-      }
-    });
-
-    res.json(response.data);
-  } catch (err) {
-    console.error('Error fetching Zoom recordings:', err);
-    res.status(500).json({ message: 'Error fetching Zoom recordings', error: err.message });
-  }
-};
-
-// Import Zoom recordings
-exports.importZoomRecordings = async (req, res) => {
-  try {
-    const { recordings, projectId } = req.body;
-
-    if (!recordings || !projectId) {
-      return res.status(400).json({ message: 'Recordings and projectId are required' });
-    }
-
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-
-    const importedRecordings = [];
-
-    for (const rec of recordings) {
-      const existingRecording = await Recording.findOne({ zoomId: rec.id });
-      if (existingRecording) {
-        importedRecordings.push(existingRecording);
-        continue;
-      }
-
-      const newRecording = new Recording({
-        projectId,
-        name: rec.topic || 'Untitled Recording',
-        date: new Date(rec.start_time) || new Date(),
-        duration: rec.duration ? `${Math.floor(rec.duration / 60)}:${String(rec.duration % 60).padStart(2, '0')}` : 'Unknown',
-        zoomId: rec.id,
-        url: rec.play_url || rec.download_url,
-        size: rec.file_size ? `${Math.round(rec.file_size / (1024 * 1024))} MB` : 'Unknown'
-      });
-
-      const savedRecording = await newRecording.save();
-      importedRecordings.push(savedRecording);
-    }
-
-    res.json(importedRecordings);
-  } catch (err) {
-    console.error('Error importing Zoom recordings:', err);
-    res.status(500).json({ message: 'Error importing Zoom recordings', error: err.message });
-  }
-};
-
 // Disconnect Zoom account
 exports.disconnectZoomAccount = async (req, res) => {
   try {
-    // In a real implementation, you would remove the user's Zoom credentials from your database
-    // For this demo, we'll just clear the environment variables
-    delete process.env.ZOOM_API_KEY;
-    delete process.env.ZOOM_API_SECRET;
-    delete process.env.ZOOM_ACCOUNT_ID;
-
+    // Remove Zoom settings from database
+    await ZoomSettings.deleteMany({});
+    
     res.json({ success: true, message: 'Zoom account disconnected successfully' });
   } catch (err) {
     console.error('Error disconnecting Zoom account:', err);
@@ -219,3 +211,13 @@ exports.disconnectZoomAccount = async (req, res) => {
   }
 };
 
+// Check Zoom connection status
+exports.getZoomStatus = async (req, res) => {
+  try {
+    const settings = await ZoomSettings.findOne();
+    res.json({ connected: !!settings });
+  } catch (err) {
+    console.error('Error checking Zoom status:', err);
+    res.status(500).json({ message: 'Error checking Zoom status', error: err.message });
+  }
+};
