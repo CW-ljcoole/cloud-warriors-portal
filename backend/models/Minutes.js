@@ -1,57 +1,53 @@
 const mongoose = require('mongoose');
 
 const MinutesSchema = new mongoose.Schema({
-  projectId: {
+  project: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
     required: true
   },
-  recordingId: {
+  recording: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Recording'
   },
-  name: {
+  title: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
-  date: {
+  meetingDate: {
     type: Date,
-    required: true
+    default: Date.now
   },
-  attendees: [{
-    type: String
-  }],
-  summary: {
-    type: String
-  },
-  content: {
-    type: String,
-    required: true
-  },
-  actionItems: [{
-    description: {
-      type: String,
-      required: true
-    },
-    assignee: {
-      type: String
-    },
-    dueDate: {
-      type: Date
-    },
-    status: {
-      type: String,
-      enum: ['Open', 'In Progress', 'Completed'],
-      default: 'Open'
+  attendees: [
+    {
+      name: String,
+      email: String,
+      role: String
     }
-  }],
-  nextSync: {
-    type: String
-  },
-  emailSent: {
-    type: Boolean,
-    default: false
+  ],
+  agenda: [String],
+  discussion: [
+    {
+      topic: String,
+      notes: String
+    }
+  ],
+  actionItems: [
+    {
+      description: String,
+      assignedTo: String,
+      dueDate: Date,
+      status: {
+        type: String,
+        enum: ['Not Started', 'In Progress', 'Completed'],
+        default: 'Not Started'
+      }
+    }
+  ],
+  decisions: [String],
+  nextMeeting: {
+    date: Date,
+    agenda: [String]
   },
   createdAt: {
     type: Date,
@@ -60,3 +56,4 @@ const MinutesSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Minutes', MinutesSchema);
+
