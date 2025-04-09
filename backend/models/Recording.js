@@ -1,40 +1,38 @@
 const mongoose = require('mongoose');
 
 const RecordingSchema = new mongoose.Schema({
-  projectId: {
+  project: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
     required: true
   },
-  name: {
+  title: {
     type: String,
-    required: true,
-    trim: true
-  },
-  date: {
-    type: Date,
     required: true
   },
+  description: {
+    type: String
+  },
+  zoomMeetingId: {
+    type: String
+  },
+  recordingUrl: {
+    type: String,
+    required: true
+  },
+  recordingDate: {
+    type: Date,
+    default: Date.now
+  },
   duration: {
-    type: String
+    type: Number // in minutes
   },
-  zoomId: {
-    type: String
-  },
-  url: {
-    type: String
-  },
-  size: {
-    type: String
-  },
-  processed: {
-    type: Boolean,
-    default: false
-  },
-  minutesGenerated: {
-    type: Boolean,
-    default: false
-  },
+  participants: [
+    {
+      name: String,
+      email: String
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now
