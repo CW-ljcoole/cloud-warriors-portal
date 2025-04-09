@@ -21,16 +21,16 @@ const ZoomIntegration = () => {
     e.preventDefault();
     
     try {
-      // Mock API call
-      // const apiUrl = config.apiUrl;
-      // const response = await fetch(`${apiUrl}/api/users/zoom-connect`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(zoomCredentials),
-      // });
-
-      // if (!response.ok) throw new Error('Failed to connect to Zoom');
-
+      const apiUrl = config.apiUrl;
+      const response = await fetch(`${apiUrl}/api/zoom/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(zoomCredentials),
+      });
+      
+      if (!response.ok) throw new Error('Failed to connect to Zoom');
+      
+      const data = await response.json();
       setConnected(true);
       alert('Successfully connected to Zoom! You can now add Zoom Meeting IDs to your projects.');
     } catch (error) {
@@ -71,7 +71,7 @@ const ZoomIntegration = () => {
                 required
               />
             </div>
-
+            
             <div className="form-group">
               <label htmlFor="apiSecret">Zoom API Secret</label>
               <input
@@ -83,7 +83,7 @@ const ZoomIntegration = () => {
                 required
               />
             </div>
-
+            
             <div className="form-group">
               <label htmlFor="accountId">Zoom Account ID</label>
               <input
@@ -108,9 +108,9 @@ const ZoomIntegration = () => {
             <ol>
               <li>Log in to the <a href="https://marketplace.zoom.us/" target="_blank" rel="noopener noreferrer">Zoom App Marketplace</a></li>
               <li>Click on "Develop" in the top-right corner and select "Build App"</li>
-              <li>Choose "JWT" as the app type</li>
+              <li>Choose "Server-to-Server OAuth" as the app type</li>
               <li>Fill in the required information and create your app</li>
-              <li>Copy the API Key, API Secret, and Account ID provided</li>
+              <li>Copy the API Key (Client ID) , API Secret (Client Secret), and Account ID provided</li>
             </ol>
           </div>
         </div>
@@ -120,3 +120,4 @@ const ZoomIntegration = () => {
 };
 
 export default ZoomIntegration;
+
