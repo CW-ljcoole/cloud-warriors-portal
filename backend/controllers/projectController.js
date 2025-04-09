@@ -56,23 +56,16 @@ exports.createProject = async (req, res) => {
 // Update project
 exports.updateProject = async (req, res) => {
   try {
-    const { name, description, startDate, endDate, status, team, 
-            emailDistribution, zoomMeetingPattern, defaultTemplate, 
-            autoGenerateMinutes, sendNotifications } = req.body;
+    const { name, description, startDate, endDate, status, team } = req.body;
     
     // Build project object
     const projectFields = {};
     if (name) projectFields.name = name;
-    if (description !== undefined) projectFields.description = description;
+    if (description) projectFields.description = description;
     if (startDate) projectFields.startDate = startDate;
     if (endDate) projectFields.endDate = endDate;
     if (status) projectFields.status = status;
     if (team) projectFields.team = team;
-    if (emailDistribution !== undefined) projectFields.emailDistribution = emailDistribution;
-    if (zoomMeetingPattern !== undefined) projectFields.zoomMeetingPattern = zoomMeetingPattern;
-    if (defaultTemplate) projectFields.defaultTemplate = defaultTemplate;
-    if (autoGenerateMinutes !== undefined) projectFields.autoGenerateMinutes = autoGenerateMinutes;
-    if (sendNotifications !== undefined) projectFields.sendNotifications = sendNotifications;
     
     let project = await Project.findById(req.params.id);
     
@@ -90,6 +83,9 @@ exports.updateProject = async (req, res) => {
     res.json(project);
   } catch (err) {
     console.error(err);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Project not found' });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -103,7 +99,8 @@ exports.deleteProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
     
-    await project.deleteOne();
+    await Project.findByIdAndRemove(req.params.id);
+    
     res.json({ message: 'Project removed' });
   } catch (err) {
     console.error(err);
@@ -113,3 +110,4 @@ exports.deleteProject = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
