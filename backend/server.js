@@ -49,6 +49,11 @@ app.use('/api/zoom', zoomRoutes);
 app.use('/api/distribution', distributionRoutes);
 app.use('/api/storage', storageRoutes);
 
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Root route
 app.get('/', (req, res) => {
   res.send('Cloud Warriors PM Portal API is running');
