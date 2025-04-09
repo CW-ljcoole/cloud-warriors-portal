@@ -32,5 +32,10 @@ router.get('/recordings/meeting/:meetingId', zoomController.getZoomRecordingsByM
 // @access  Public
 router.post('/recordings/import/:projectId', zoomController.importRecordingsToProject);
 
+// @route   GET api/zoom/status
+// @desc    Check Zoom connection status
+// @access  Public
+router.get('/status', zoomController.getZoomStatus);
+
 module.exports = router;
 
