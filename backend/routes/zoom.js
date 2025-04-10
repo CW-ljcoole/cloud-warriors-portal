@@ -7,20 +7,10 @@ const zoomController = require('../controllers/zoomController');
 // @access  Public
 router.get('/recordings', zoomController.getZoomRecordings);
 
-// @route   POST api/zoom/recordings/import
-// @desc    Import Zoom recordings to project
-// @access  Public
-router.post('/recordings/import', zoomController.importZoomRecordings);
-
 // @route   POST api/zoom/connect
 // @desc    Connect Zoom account
 // @access  Public
 router.post('/connect', zoomController.connectZoom);
-
-// @route   DELETE api/zoom/disconnect/:userId
-// @desc    Disconnect Zoom account
-// @access  Public
-router.delete('/disconnect/:userId', zoomController.disconnectZoomAccount);
 
 // @route   GET api/zoom/recordings/meeting/:meetingId
 // @desc    Get recordings for a specific meeting
@@ -32,10 +22,14 @@ router.get('/recordings/meeting/:meetingId', zoomController.getZoomRecordingsByM
 // @access  Public
 router.post('/recordings/import/:projectId', zoomController.importRecordingsToProject);
 
+// @route   POST api/zoom/disconnect
+// @desc    Disconnect Zoom account
+// @access  Public
+router.post('/disconnect', zoomController.disconnectZoomAccount);
+
 // @route   GET api/zoom/status
 // @desc    Check Zoom connection status
 // @access  Public
 router.get('/status', zoomController.getZoomStatus);
 
 module.exports = router;
-
